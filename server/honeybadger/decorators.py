@@ -6,19 +6,18 @@ from threading import Thread
 def login_required(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
-        if g.user:
-            return func(*args, **kwargs)
-        return redirect(url_for('login'))
+        return func(*args, **kwargs) if g.user else redirect(url_for('login'))
+
     return wrapped
 
 def roles_required(*roles):
     def wrapper(func):
         @wraps(func)
         def wrapped(*args, **kwargs):
-            if ROLES[g.user.role] not in roles:
-                return abort(403)
-            return func(*args, **kwargs)
+            return abort(403) if ROLES[g.user.role] not in roles else func(*args, **kwargs)
+
         return wrapped
+
     return wrapper
 
 def async(func):

@@ -9,18 +9,19 @@ def add_beacon(*args, **kwargs):
     b = Beacon(**kwargs)
     db.session.add(b)
     db.session.commit()
-    logger.info('Target location identified as Lat: {}, Lng: {}'.format(kwargs['lat'], kwargs['lng']))
+    logger.info(
+        f"Target location identified as Lat: {kwargs['lat']}, Lng: {kwargs['lng']}"
+    )
 
 def process_json(data, jsondata):
     logger.info('Processing JSON data.')
-    logger.info('Data received:\n{}'.format(jsondata))
+    logger.info(f'Data received:\n{jsondata}')
     # process Google device data
     if jsondata.get('scan_results'):
-        aps = parse_google(jsondata['scan_results'])
-        if aps:
-            logger.info('Parsed access points: {}'.format(aps))
+        if aps := parse_google(jsondata['scan_results']):
+            logger.info(f'Parsed access points: {aps}')
             coords = get_coords_from_google(aps)
-            if all([x for x in coords.values()]):
+            if all(list(coords.values())):
                 add_beacon(
                     target_guid=data['target'],
                     agent=data['agent'],
@@ -62,8 +63,8 @@ def process_wlan_survey(data):
     os = data['os']
     _data = data['data']
     content = b64d(_data).decode()
-    logger.info('Data received:\n{}'.format(_data))
-    logger.info('Decoded Data:\n{}'.format(content))
+    logger.info(f'Data received:\n{_data}')
+    logger.info(f'Decoded Data:\n{content}')
     if _data:
         aps = []
         if re.search('^mac os x', os.lower()):
@@ -74,9 +75,9 @@ def process_wlan_survey(data):
             aps = parse_iwlist(content)
         # handle recognized data
         if aps:
-            logger.info('Parsed access points: {}'.format(aps))
+            logger.info(f'Parsed access points: {aps}')
             coords = get_coords_from_google(aps)
-            if all([x for x in coords.values()]):
+            if all(list(coords.values())):
                 add_beacon(
                     target_guid=data['target'],
                     agent=data['agent'],
@@ -102,12 +103,12 @@ def process_wlan_survey(data):
 def process_ip(data):
     logger.info('Processing IP address.')
     coords = get_coords_from_ipstack(data['ip'])
-    if not all([x for x in coords.values()]):
+    if not all(list(coords.values())):
         # No data. try again with the fallback.
         logger.info('Using fallback API.')
         coords = get_coords_from_ipinfo(data['ip'])
 
-    if all([x for x in coords.values()]):
+    if all(list(coords.values())):
         add_beacon(
             target_guid=data['target'],
             agent=data['agent'],

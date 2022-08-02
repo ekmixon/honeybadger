@@ -42,8 +42,7 @@ def beacons():
 @login_required
 @roles_required('admin')
 def beacon_delete(id):
-    beacon = Beacon.query.get(id)
-    if beacon:
+    if beacon := Beacon.query.get(id):
         db.session.delete(beacon)
         db.session.commit()
         flash('Beacon deleted.')
@@ -62,8 +61,7 @@ def targets():
 @login_required
 @roles_required('admin')
 def target_add():
-    name = request.form['target']
-    if name:
+    if name := request.form['target']:
         target = Target(
             name=name,
         )
@@ -76,8 +74,7 @@ def target_add():
 @login_required
 @roles_required('admin')
 def target_delete(guid):
-    target = Target.query.filter_by(guid=guid).first()
-    if target:
+    if target := Target.query.filter_by(guid=guid).first():
         db.session.delete(target)
         db.session.commit()
         flash('Target deleted.')
@@ -163,33 +160,31 @@ def admin_user_init():
 @login_required
 @roles_required('admin')
 def admin_user(action, id):
-    user = User.query.get(id)
-    if user:
-        if user != g.user:
-            if action == 'activate' and user.status == 2:
-                user.status = 1
-                db.session.add(user)
-                db.session.commit()
-                flash('User activated.')
-            elif action == 'deactivate' and user.status == 1:
-                user.status = 2
-                db.session.add(user)
-                db.session.commit()
-                flash('User deactivated.')
-            elif action == 'reset' and user.status == 1:
-                user.status = 3
-                user.token = generate_token()
-                db.session.add(user)
-                db.session.commit()
-                flash('User reset.')
-            elif action == 'delete':
-                db.session.delete(user)
-                db.session.commit()
-                flash('User deleted.')
-            else:
-                flash('Invalid user action.')
-        else:
+    if user := User.query.get(id):
+        if user == g.user:
             flash('Self-modification denied.')
+        elif action == 'activate' and user.status == 2:
+            user.status = 1
+            db.session.add(user)
+            db.session.commit()
+            flash('User activated.')
+        elif action == 'deactivate' and user.status == 1:
+            user.status = 2
+            db.session.add(user)
+            db.session.commit()
+            flash('User deactivated.')
+        elif action == 'reset' and user.status == 1:
+            user.status = 3
+            user.token = generate_token()
+            db.session.add(user)
+            db.session.commit()
+            flash('User reset.')
+        elif action == 'delete':
+            db.session.delete(user)
+            db.session.commit()
+            flash('User deleted.')
+        else:
+            flash('Invalid user action.')
     else:
         flash('Invalid user ID.')
     return redirect(url_for('admin'))
@@ -223,7 +218,7 @@ def demo(guid):
         key = request.values['key']
         if g.user.check_password(key):
             if text and 'alert(' in text:
-                text = 'Congrats! You entered: {}'.format(text)
+                text = f'Congrats! You entered: {text}'
             else:
                 text = 'Nope. Try again.'
         else:
@@ -232,7 +227,10 @@ def demo(guid):
     response = make_response(render_template('demo.html', target=guid, text=text, nonce=nonce))
     response.headers['X-XSS-Protection'] = '0'#'1; report=https://hb.lanmaster53.com/api/beacon/{}/X-XSS-Protection'.format(guid)
     uri = url_for('api_beacon', target=guid, agent='Content-Security-Policy')
-    response.headers['Content-Security-Policy-Report-Only'] = 'script-src \'nonce-{}\'; report-uri {}'.format(nonce, uri)
+    response.headers[
+        'Content-Security-Policy-Report-Only'
+    ] = f"script-src \'nonce-{nonce}\'; report-uri {uri}"
+
     return response
 
 @app.route('/log')
@@ -243,10 +241,12 @@ def log():
         Log.query.delete()
         db.session.commit()
         return redirect(url_for('log'))
-    content = ''
     logs = Log.query.order_by(Log.created).all()
-    for log in logs:
-        content += '[{}] [{}] {}{}'.format(log.created_as_string, log.level_as_string, log.message, os.linesep)
+    content = ''.join(
+        f'[{log.created_as_string}] [{log.level_as_string}] {log.message}{os.linesep}'
+        for log in logs
+    )
+
     return render_template('log.html', content=content)
 
 # control panel api views
@@ -262,10 +262,10 @@ def api_beacons():
 @app.route('/api/beacon/<target>/<agent>', methods=['GET', 'POST'])
 @cross_origin()
 def api_beacon(target, agent):
-    logger.info('{}'.format('='*50))
+    logger.info(f"{'=' * 50}")
     data = {'target': target, 'agent': agent}
-    logger.info('Target: {}'.format(target))
-    logger.info('Agent: {}'.format(agent))
+    logger.info(f'Target: {target}')
+    logger.info(f'Agent: {agent}')
     # check if target is valid
     if target not in [x.guid for x in Target.query.all()]:
         logger.error('Invalid target GUID.')
@@ -275,16 +275,15 @@ def api_beacon(target, agent):
     ip = request.environ['REMOTE_ADDR']
     port = request.environ['REMOTE_PORT']
     useragent = request.environ['HTTP_USER_AGENT']
-    data.update({'comment': comment, 'ip': ip, 'port': port, 'useragent': useragent})
-    logger.info('Connection from {} @ {}:{} via {}'.format(target, ip, port, agent))
-    logger.info('Parameters: {}'.format(request.values.to_dict()))
-    logger.info('User-Agent: {}'.format(useragent))
-    logger.info('Comment: {}'.format(comment))
-    data.update(request.values.to_dict())
+    data |= {'comment': comment, 'ip': ip, 'port': port, 'useragent': useragent}
+    logger.info(f'Connection from {target} @ {ip}:{port} via {agent}')
+    logger.info(f'Parameters: {request.values.to_dict()}')
+    logger.info(f'User-Agent: {useragent}')
+    logger.info(f'Comment: {comment}')
+    data |= request.values.to_dict()
     # process json payloads
-    if request.json:
-        if process_json(data, request.json):
-            abort(404)
+    if request.json and process_json(data, request.json):
+        abort(404)
     # process known coordinates
     if all(k in data for k in ('lat', 'lng', 'acc')):
         if process_known_coords(data):

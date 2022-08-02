@@ -6,9 +6,7 @@ import datetime
 
 def stringify_datetime(value):
     """Deserialize datetime object into string form for JSON processing."""
-    if value is None:
-        return None
-    return value.strftime("%Y-%m-%d %H:%M:%S")
+    return None if value is None else value.strftime("%Y-%m-%d %H:%M:%S")
 
 class BaseModel(db.Model):
     __abstract__ = True
@@ -58,7 +56,7 @@ class Beacon(BaseModel):
         }
 
     def __repr__(self):
-        return "<Beacon '{}'>".format(self.target.name)
+        return f"<Beacon '{self.target.name}'>"
 
 class Target(BaseModel):
     __tablename__ = 'targets'
@@ -71,7 +69,7 @@ class Target(BaseModel):
         return len(self.beacons.all())
 
     def __repr__(self):
-        return "<Target '{}'>".format(self.name)
+        return f"<Target '{self.name}'>"
 
 class User(BaseModel):
     __tablename__ = 'users'
@@ -102,13 +100,11 @@ class User(BaseModel):
 
     @property
     def is_admin(self):
-        if self.role == 0:
-            return True
-        return False
+        return self.role == 0
 
     @staticmethod
     def get_by_email(email):
         return User.query.filter_by(email=email).first()
 
     def __repr__(self):
-        return "<User '{}'>".format(self.email)
+        return f"<User '{self.email}'>"

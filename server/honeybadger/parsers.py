@@ -18,13 +18,17 @@ class AP(object):
         }
 
     def __repr__(self):
-        return '<AP ssid={}, bssid={}, ss={}, channel={}>'.format(self.ssid, self.bssid, self.ss, self.channel)
+        return f'<AP ssid={self.ssid}, bssid={self.bssid}, ss={self.ss}, channel={self.channel}>'
 
 def parse_google(jsondata):
-    aps = []
-    for ap in jsondata[0]['ap_list']:
-        aps.append(AP(bssid=ap['bssid'], ss=ap['signal_level'], channel=freq2channel(ap['frequency'])))
-    return aps
+    return [
+        AP(
+            bssid=ap['bssid'],
+            ss=ap['signal_level'],
+            channel=freq2channel(ap['frequency']),
+        )
+        for ap in jsondata[0]['ap_list']
+    ]
 
 def parse_airport(content):
     aps = []
